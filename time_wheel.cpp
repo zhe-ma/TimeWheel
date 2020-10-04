@@ -26,26 +26,33 @@ void TimeWheel::AddTimer(TimerPtr timer) {
   }
   int64_t diff = timer->when_ms() + less_tw_time - GetNowTimestamp();
 
+  // If the difference is greater than scale unit, the timer can be added into the current time wheel.
   if (diff >= scale_unit_ms_) {
     size_t n = (current_index_ + diff / scale_unit_ms_) % scales_;
     slots_[n].push_back(timer);
     return;
   }
 
-  if (less_level_tw_ == nullptr) {
-    slots_[current_index_].push_back(timer);
+  // If the difference is less than scale uint, the timer should be added into less level time wheel.
+  if (less_level_tw_ != nullptr) {
+    less_level_tw_->AddTimer(timer);
     return;
   }
 
-  less_level_tw_->AddTimer(timer);
+  // If the current time wheel is the least level, the timer can be added into the current time wheel.
+  slots_[current_index_].push_back(timer);
 }
 
 void TimeWheel::Increase() {
+  // Increase the time wheel.
   ++current_index_;
   if (current_index_ < scales_) {
     return;
   }
 
+  // If the time wheel is full, the greater level time wheel should be increased.
+  // The timers in the current slot of the greater level time wheel should be moved into
+  // the less level time wheel.
   current_index_ = current_index_ % scales_;
   if (greater_level_tw_ != nullptr) {
     greater_level_tw_->Increase();

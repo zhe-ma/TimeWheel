@@ -44,9 +44,12 @@ public:
 private:
   std::string name_;
   uint32_t current_index_;
+
+  // A time wheel can be devided into multiple scales. A scals has N ms.
   uint32_t scales_;
   uint32_t scale_unit_ms_;
 
+  // Every slot corresponds to a scale. Every slot contains the timers.
   std::vector<std::list<TimerPtr>> slots_;
 
   TimeWheel* less_level_tw_;  // Less scale unit.
