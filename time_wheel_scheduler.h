@@ -2,6 +2,7 @@
 #define TIME_WHEEL_SCHEDULER_H_
 
 #include <mutex>
+#include <vector>
 #include <thread>
 #include <unordered_set>
 
@@ -18,8 +19,16 @@ public:
 
   void CancelTimer(uint32_t timer_id);
 
-  void Start();
+  bool Start();
   void Stop();
+
+  void AppendTimeWheel(uint32_t scales, uint32_t scale_unit_ms, const std::string& name = "");
+
+private:
+  void Run();
+
+  TimeWheelPtr GetGreatestTimeWheel();
+  TimeWheelPtr GetLeastTimeWheel();
 
 private:
   std::mutex mutex_;
@@ -30,11 +39,7 @@ private:
   std::unordered_set<uint32_t> cancel_timer_ids_;
 
   uint32_t timer_step_ms_;
-
-  TimeWheel millisecond_tw_;  // Level one time wheel. The least scale unit.
-  TimeWheel second_tw_;
-  TimeWheel minute_tw_;
-  TimeWheel hour_tw_;  // Level four time wheel. The greatest scale unit.
+  std::vector<TimeWheelPtr> time_wheels_;
 };
 
 #endif  // TIME_WHEEL_SCHEDULER_H_

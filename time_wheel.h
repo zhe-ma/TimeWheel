@@ -1,10 +1,11 @@
 #ifndef TIME_WHEEL_H_
 #define TIME_WHEEL_H_
 
+#include <chrono>
 #include <string>
+#include <memory>
 #include <vector>
 #include <list>
-#include <chrono>
 
 #include "timer.h"
 
@@ -51,6 +52,8 @@ private:
   TimeWheel* less_level_tw_;  // Less scale unit.
   TimeWheel* greater_level_tw_;  // Greater scale unit.
 };
+
+using TimeWheelPtr = std::shared_ptr<TimeWheel>;
 
 inline int64_t GetNowTimestamp() {
   using namespace std::chrono;

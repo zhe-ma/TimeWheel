@@ -2,53 +2,51 @@
 
 static uint32_t s_inc_id = 1;
 
-// TODO: Timer_wheel, use level time 1 to add timer. 误差也是timer_step_ms
 TimeWheelScheduler::TimeWheelScheduler(uint32_t timer_step_ms)
     : timer_step_ms_(timer_step_ms)
-    , stop_(false)
-    , millisecond_tw_(1000 / timer_step_ms, timer_step_ms)
-    , second_tw_(60, 1000)
-    , minute_tw_(60, 60 * 1000)
-    , hour_tw_(24, 60 * 60 * 1000) {
-
-  hour_tw_.set_less_level_tw(&minute_tw_);
-
-  minute_tw_.set_less_level_tw(&second_tw_);
-  minute_tw_.set_greater_level_tw(&hour_tw_);
-
-  second_tw_.set_less_level_tw(&millisecond_tw_);
-  second_tw_.set_greater_level_tw(&minute_tw_);
-
-  millisecond_tw_.set_greater_level_tw(&second_tw_);
+    , stop_(false) {
 }
 
-void TimeWheelScheduler::Start() {
-  thread_ = std::thread([&]{
-    while (true) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(timer_step_ms_));
+bool TimeWheelScheduler::Start() {
+  if (timer_step_ms_ < 50) {
+    return false;
+  }
+  
+  if (time_wheels_.empty()) {
+    return false;
+  }
 
-      std::lock_guard<std::mutex> lock(mutex_);
-      if (stop_) {
-        break;
+  thread_ = std::thread(std::bind(&TimeWheelScheduler::Run, this));
+
+  return true;
+}
+
+void TimeWheelScheduler::Run() {
+  while (true) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(timer_step_ms_));
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (stop_) {
+      break;
+    }
+
+    TimeWheelPtr least_time_wheel = GetLeastTimeWheel();
+    least_time_wheel->Increase();
+    std::list<TimerPtr> slot = std::move(least_time_wheel->GetAndClearCurrentSlot());
+    for (const TimerPtr& timer : slot) {
+      auto it = cancel_timer_ids_.find(timer->id());
+      if (it != cancel_timer_ids_.end()) {
+        cancel_timer_ids_.erase(it);
+        continue;
       }
 
-      millisecond_tw_.Increase();
-      std::list<TimerPtr> slot = std::move(millisecond_tw_.GetAndClearCurrentSlot());
-      for (const TimerPtr& timer : slot) {
-        auto it = cancel_timer_ids_.find(timer->id());
-        if (it != cancel_timer_ids_.end()) {
-          cancel_timer_ids_.erase(it);
-          continue;
-        }
-
-        timer->Run();
-        if (timer->repeated()) {
-          timer->UpdateWhenTime();
-          hour_tw_.AddTimer(timer);
-        }
+      timer->Run();
+      if (timer->repeated()) {
+        timer->UpdateWhenTime();
+        GetGreatestTimeWheel()->AddTimer(timer);
       }
     }
-  });
+  }
 }
 
 void TimeWheelScheduler::Stop() {
@@ -60,10 +58,43 @@ void TimeWheelScheduler::Stop() {
   thread_.join();
 }
 
+TimeWheelPtr TimeWheelScheduler::GetGreatestTimeWheel() {
+  if (time_wheels_.empty()) {
+    return TimeWheelPtr();
+  }
+
+  return time_wheels_.front();
+}
+
+TimeWheelPtr TimeWheelScheduler::GetLeastTimeWheel() {
+  if (time_wheels_.empty()) {
+    return TimeWheelPtr();
+  }
+
+  return time_wheels_.back();
+}
+
+void TimeWheelScheduler::AppendTimeWheel(uint32_t scales, uint32_t scale_unit_ms, const std::string& name) {
+  TimeWheelPtr time_wheel = std::make_shared<TimeWheel>(scales, scale_unit_ms, name);
+  if (time_wheels_.empty()) {
+    time_wheels_.push_back(time_wheel);
+    return;
+  }
+
+  TimeWheelPtr greater_time_wheel = time_wheels_.back();
+  greater_time_wheel->set_less_level_tw(time_wheel.get());
+  time_wheel->set_greater_level_tw(greater_time_wheel.get());
+  time_wheels_.push_back(time_wheel);
+}
+
 uint32_t TimeWheelScheduler::CreateTimerAt(int64_t when_ms, const TimerTask& handler) {
+  if (time_wheels_.empty()) {
+    return 0;
+  }
+
   std::lock_guard<std::mutex> lock(mutex_);
   ++s_inc_id;
-  hour_tw_.AddTimer(std::make_shared<Timer>(s_inc_id, when_ms, 0, handler));
+  GetGreatestTimeWheel()->AddTimer(std::make_shared<Timer>(s_inc_id, when_ms, 0, handler));
 
   return s_inc_id;
 }
@@ -74,9 +105,14 @@ uint32_t TimeWheelScheduler::CreateTimerAfter(int64_t delay_ms, const TimerTask&
 }
 
 uint32_t TimeWheelScheduler::CreateTimerEvery(int64_t interval_ms, const TimerTask& handler) {
+  if (time_wheels_.empty()) {
+    return 0;
+  }
+
   std::lock_guard<std::mutex> lock(mutex_);
   ++s_inc_id;
-  hour_tw_.AddTimer(std::make_shared<Timer>(s_inc_id, GetNowTimestamp() + interval_ms, interval_ms, handler));
+  int64_t when = GetNowTimestamp() + interval_ms;
+  GetGreatestTimeWheel()->AddTimer(std::make_shared<Timer>(s_inc_id, when, interval_ms, handler));
 
   return s_inc_id;
 }
