@@ -38,14 +38,6 @@ public:
 
   void Increase();
 
-  //std::list<TimerTask> GetDueTasks() {
-  //  std::list<TimerPtr> slot = std::move(slots_[current_index_]);
-  //  std::list<TimerTask> tasks;
-  //  for (const TimerPtr& timer : slot) {
-  //    timer->
-  //  }
-  //}
-
   std::list<TimerPtr> GetAndClearCurrentSlot();
 
 private:

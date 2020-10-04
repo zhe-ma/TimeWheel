@@ -6,31 +6,33 @@
 int main() {
   TimeWheelScheduler tws;
 
-  std::thread t([&](){
-    tws.Run();
-  });
+  tws.Start();
 
-  tws.RunAt(GetNowTimestamp() + 10000, []() {
+  tws.CreateTimerAt(GetNowTimestamp() + 10000, []() {
     std::cout << "At now+10s" <<std::endl;
   });
 
-  tws.RunAfter(500, []() {
+  tws.CreateTimerAfter(500, []() {
     std::cout << "After 0.5s" <<std::endl;
   });
 
-  tws.RunEvery(5000, []() {
+  auto timer_id = tws.CreateTimerEvery(5000, []() {
     std::cout << "Every 5s" <<std::endl;
   });
 
-  tws.RunEvery(30 * 1000, []() {
+  tws.CreateTimerEvery(30 * 1000, []() {
     std::cout << "Every 30s" <<std::endl;
   });
 
-  tws.RunEvery(60 * 1000, []() {
+  tws.CreateTimerEvery(60 * 1000, []() {
     std::cout << "Every 1m" <<std::endl;
   });
 
-  t.join();
+  std::this_thread::sleep_for(std::chrono::seconds(30));
+  tws.CancelTimer(timer_id);
+
+  std::this_thread::sleep_for(std::chrono::minutes(10));
+  tws.Stop();
 
   return 0;
 }

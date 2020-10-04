@@ -11,7 +11,7 @@ TimeWheel::TimeWheel(uint32_t scales, uint32_t scale_unit_ms, const std::string&
 }
 
 int64_t TimeWheel::GetCurrentTime() const {
-  int time = current_index_ * scale_unit_ms_;
+  int64_t time = current_index_ * scale_unit_ms_;
   if (less_level_tw_ != nullptr) {
     time += less_level_tw_->GetCurrentTime();
   }
