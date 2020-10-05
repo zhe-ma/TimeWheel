@@ -13,9 +13,9 @@ public:
   explicit TimeWheelScheduler(uint32_t timer_step_ms = 50);
 
   // Return timer id. Return 0 if the timer creation fails.
-  uint32_t CreateTimerAt(int64_t when_ms, const TimerTask& handler);
-  uint32_t CreateTimerAfter(int64_t delay_ms, const TimerTask& handler);
-  uint32_t CreateTimerEvery(int64_t interval_ms, const TimerTask& handler);
+  uint32_t CreateTimerAt(int64_t when_ms, const TimerTask& task);
+  uint32_t CreateTimerAfter(int64_t delay_ms, const TimerTask& task);
+  uint32_t CreateTimerEvery(int64_t interval_ms, const TimerTask& task);
 
   void CancelTimer(uint32_t timer_id);
 

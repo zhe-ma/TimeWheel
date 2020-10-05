@@ -87,24 +87,24 @@ void TimeWheelScheduler::AppendTimeWheel(uint32_t scales, uint32_t scale_unit_ms
   time_wheels_.push_back(time_wheel);
 }
 
-uint32_t TimeWheelScheduler::CreateTimerAt(int64_t when_ms, const TimerTask& handler) {
+uint32_t TimeWheelScheduler::CreateTimerAt(int64_t when_ms, const TimerTask& task) {
   if (time_wheels_.empty()) {
     return 0;
   }
 
   std::lock_guard<std::mutex> lock(mutex_);
   ++s_inc_id;
-  GetGreatestTimeWheel()->AddTimer(std::make_shared<Timer>(s_inc_id, when_ms, 0, handler));
+  GetGreatestTimeWheel()->AddTimer(std::make_shared<Timer>(s_inc_id, when_ms, 0, task));
 
   return s_inc_id;
 }
 
-uint32_t TimeWheelScheduler::CreateTimerAfter(int64_t delay_ms, const TimerTask& handler) {
+uint32_t TimeWheelScheduler::CreateTimerAfter(int64_t delay_ms, const TimerTask& task) {
   int64_t when = GetNowTimestamp() + delay_ms;
-  return CreateTimerAt(when, handler);
+  return CreateTimerAt(when, task);
 }
 
-uint32_t TimeWheelScheduler::CreateTimerEvery(int64_t interval_ms, const TimerTask& handler) {
+uint32_t TimeWheelScheduler::CreateTimerEvery(int64_t interval_ms, const TimerTask& task) {
   if (time_wheels_.empty()) {
     return 0;
   }
@@ -112,7 +112,7 @@ uint32_t TimeWheelScheduler::CreateTimerEvery(int64_t interval_ms, const TimerTa
   std::lock_guard<std::mutex> lock(mutex_);
   ++s_inc_id;
   int64_t when = GetNowTimestamp() + interval_ms;
-  GetGreatestTimeWheel()->AddTimer(std::make_shared<Timer>(s_inc_id, when, interval_ms, handler));
+  GetGreatestTimeWheel()->AddTimer(std::make_shared<Timer>(s_inc_id, when, interval_ms, task));
 
   return s_inc_id;
 }
